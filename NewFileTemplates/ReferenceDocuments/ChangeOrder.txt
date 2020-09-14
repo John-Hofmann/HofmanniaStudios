@@ -1,0 +1,7 @@
+HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Discardable\PostSetup\ShellNew
+
+Basically, edit the Classes value, then change right-click on the ShellNew and select permissions. Make sure ALL APPLICATION PACKAGES is selected then click Advanced.
+
+On the next screen, select Disable Inheritance and then on the dialog pop-up select the first option. Then click on each of the three top users (Your account, SYSTEM, and Administrators) and hit the edit button, untick "Full Control" on each account, clicking OK each time.
+
+Note: right clicking on the desktop at any point before you untick Full Control on all three accounts and saving the permissions will revert it to it's default value.
