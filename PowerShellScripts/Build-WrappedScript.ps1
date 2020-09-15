@@ -1,9 +1,9 @@
 ﻿									#############################################################################################################################################
 									#																																			#
-									#														FileName	FileName																#
+									#														FileName	Build-WrappedScript.ps1													#
 									#														Author		John Hofmann															#
 									#														Version		0.0.1																	#
-									#														Date		MM/DD/YYYY																#
+									#														Date		09/15/2020																#
 									#																																			#
 									#											Copyright © 2020 John Hofmann All Rights Reserved												#
 									#																																			#
@@ -12,7 +12,7 @@
 									#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 									#	Date			Version		Notes																										#
 									#	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
-									#	MM/DD/YYYY		0.0.1		Initial Build																								#
+									#	09/15/2020		0.0.1		Initial Build																								#
 									#																																			#
 									#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 									#														  Known Issues																		#
@@ -82,24 +82,13 @@
 #>
 
 
-#[CmdletBinding(ConfirmImpact=[System.Management.Automation.ConfirmImpact], DefaultParameterSetName=[string], HelpUri=[uri], PositionalBinding=[bool], SupportsPaging=[bool], SupportsShouldProcess=[bool])]
-#[OutputType([type1], [type2], ParameterSetName=[string])]
+#[CmdletBinding(ConfirmImpact='Medium', DefaultParameterSetName=[string], HelpUri=[uri], PositionalBinding=[bool], SupportsPaging=[bool], SupportsShouldProcess=$true)]
+[CmdletBinding(ConfirmImpact='Medium', PositionalBinding=$false, SupportsShouldProcess=$true)]
+
 Param (
-#	[Parameter(HelpMessage=[String_describing_mandatory_parameter], Mandatory=[bool], ParameterSetName=[string], Position=[naturalnumber], ValueFromPipeline=[bool], ValueFromPipelineByPropertyName=[bool], ValueFromRemainingArguments=[bool])]
-#	[Alias([string[]])]
-#	[AllowNull()]
-#	[AllowEmptyString()]
-#	[AllowEmptyCollection()]
-#	[ValidateCount([naturalnumber], [naturalnumber])]
-#	[ValidateLength([naturalnumber], [naturalnumber])]
-#	[ValidatePattern([regex])]
-#	[ValidateRange([naturalnumber], [naturalnumber])]
-#	[ValidateScript([scriptblock])]
-#	[ValidateSet([array])]
-#	[ValidateNotNull()]
-#	[ValidateNotNullOrEmpty()]
-#	[type]
-	$ParameterName = "defaultvalue"
+	[Parameter(HelpMessage='The path to the .ps1 file to wrap.', Mandatory=$true, Position=0, ValueFromPipeline=$true)]
+	[string]
+	$InputScript
 )
 
 Begin{}
