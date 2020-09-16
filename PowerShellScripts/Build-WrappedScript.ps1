@@ -93,17 +93,47 @@
 #>
 
 
-#[CmdletBinding(ConfirmImpact='Medium', DefaultParameterSetName=[string], HelpUri=[uri], PositionalBinding=[bool], SupportsPaging=[bool], SupportsShouldProcess=$true)]
 [CmdletBinding(ConfirmImpact='Medium', PositionalBinding=$false, SupportsShouldProcess=$true)]
 
 Param (
 	[Parameter(HelpMessage='The path to the .ps1 file to wrap.', Mandatory=$true, Position=0, ValueFromPipeline=$true)]
 	[string]
-	$InputScript
+	$InputScript,
+
+	[Parameter(HelpMessage='Force overwrite of an existing file.', Mandatory=$false)]
+	[switch]
+	$Force
 )
 
-Begin{}
+Begin {
+	$PSCmdlet.WriteDebug('Setting .NET CurrentDirectory')
+	[string]$currentPath = (Get-Location).Path
+	[System.IO.Directory]::SetCurrentDirectory($currentPath)
+}
 
-Process{}
+Process{
+	try {
+		[string[]]$sourceCode = [System.IO.File]::ReadAllLines($InputScript)
+	} catch {
+		$PSCmdlet.ThrowTerminatingError($_)
+	}
 
-End{}
+	[string]$destination = $currentPath + '\' + ($InputScript -replace '.*\\','' -replace '\.ps1','.cmd')
+
+	if ($PSCmdlet.ShouldProcess($destination, 'Create File')) {
+		if (![System.IO.File]::Exists($destination) -or $Force) {
+			[string[]]$wrappedCode ='@ECHO OFF'
+			$wrappedCode += 'START "%~nx0" /D "%ALLUSERSPROFILE%" /WAIT /B PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command $codeStart = (Select-String -Pattern ''^^:PowerShell Code Start'' -Path ''%~f0'').LineNumber; $lineCount = (Get-Content ''%~f0'').Length - $codeStart; Get-Content ''%~f0'' -Last $lineCount ^| ForEach-Object {$commands += \"$_`n\"}; $scriptBlock = [scriptblock]::Create($commands); Invoke-Command $scriptBlock'
+			$wrappedCode += 'EXIT /B %ERRORLEVEL%'
+			$wrappedCode += "`n"
+			$wrappedCode += ':PowerShell Code Start'
+			$wrappedCode += $sourceCode
+			[System.IO.File]::WriteAllLines($destination, $wrappedCode)
+		} else {
+			[System.IO.IOException]$IOException = [System.IO.IOException]::new("The file '$Destination' already exists.")
+			[System.Management.Automation.ErrorRecord]$errorRecord = [System.Management.Automation.ErrorRecord]::new($IOException, 'FileExists,HofmanniaStudios.Commands.BuildWrappedScript', 'WriteError', $destination)
+			#$errorRecord.CategoryInfo.Activity = $PSCmdlet.CommandRuntime
+			$PSCmdlet.ThrowTerminatingError($errorRecord)
+		}
+	}
+}
