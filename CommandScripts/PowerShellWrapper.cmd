@@ -2,10 +2,21 @@
 									::																																			::
 									::														FileName	PowerShellWrapper.cmd													::
 									::														Author		John Hofmann															::
-									::														Version		0.0.2																	::
+									::														Version		0.1.0																	::
 									::														Date		09/14/2020																::
 									::																																			::
 									::											Copyright © 2020 John Hofmann All Rights Reserved												::
+									::											https://github.com/John-Hofmann/HofmanniaStudios												::
+									::																																			::
+									::									This program is free software: you can redistribute it and/or modify									::
+									::									it under the terms of the GNU General Public License as published by									::
+									::										the Free Software Foundation, either version 3 of the License, or									::
+									::													(at your option) any later version.														::
+									::																																			::
+									::										This program is distributed in the hope that it will be useful,										::
+									::										but WITHOUT ANY WARRANTY; without even the implied warranty of										::
+									::										MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the										::
+									::												GNU General Public License for more details.												::
 									::																																			::
 									::══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════::
 									::															Changelog																		::
@@ -14,6 +25,7 @@
 									::	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── ::
 									::	09/14/2020		0.0.1		Initial Build																								::
 									::	09/15/2020		0.0.2		Updated ownership info to new style																			::
+									::	09/16/2020		0.1.0		Added GPL3 License boilerplate																				::
 									::																																			::
 									::══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════::
 									::														  Known Issues																		::
