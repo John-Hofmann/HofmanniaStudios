@@ -93,14 +93,14 @@
 #>
 
 
-[CmdletBinding(ConfirmImpact='Medium', PositionalBinding=$false, SupportsShouldProcess=$true)]
+[CmdletBinding(ConfirmImpact='Medium', PositionalBinding=$false, SupportsShouldProcess)]
 
 Param (
-	[Parameter(HelpMessage='The path to the .ps1 file to wrap.', Mandatory=$true, Position=0, ValueFromPipeline=$true)]
+	[Parameter(HelpMessage='The path to the .ps1 file to wrap.', Mandatory, Position=0, ValueFromPipeline)]
 	[string]
 	$InputScript,
 
-	[Parameter(HelpMessage='Force overwrite of an existing file.', Mandatory=$false)]
+	[Parameter()]
 	[switch]
 	$Force
 )
@@ -132,7 +132,6 @@ Process{
 		} else {
 			[System.IO.IOException]$IOException = [System.IO.IOException]::new("The file '$Destination' already exists.")
 			[System.Management.Automation.ErrorRecord]$errorRecord = [System.Management.Automation.ErrorRecord]::new($IOException, 'FileExists,HofmanniaStudios.Commands.BuildWrappedScript', 'WriteError', $destination)
-			#$errorRecord.CategoryInfo.Activity = $PSCmdlet.CommandRuntime
 			$PSCmdlet.ThrowTerminatingError($errorRecord)
 		}
 	}
