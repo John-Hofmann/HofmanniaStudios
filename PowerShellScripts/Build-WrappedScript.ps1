@@ -112,10 +112,19 @@ Begin {
 }
 
 Process{
+	
+	if ($InputScript -notmatch '.ps1$') {
+		[System.IO.IOException]$IOException = [System.IO.IOException]::new("The file '$InputScript' is not a valid .ps1 file.")
+		[System.Management.Automation.ErrorRecord]$errorRecord = [System.Management.Automation.ErrorRecord]::new($IOException, 'NotValidInputFile,HofmanniaStudios.Commands.BuildWrappedScript', 'InvalidData', $InputScript)
+		$PSCmdlet.WriteError($errorRecord)
+		return
+	}
+
 	try {
 		[string[]]$sourceCode = [System.IO.File]::ReadAllLines($InputScript)
 	} catch {
-		$PSCmdlet.ThrowTerminatingError($_)
+		$PSCmdlet.WriteError($_)
+		return
 	}
 
 	[string]$destination = $currentPath + '\' + ($InputScript -replace '.*\\','' -replace '\.ps1','.cmd')
@@ -130,9 +139,10 @@ Process{
 			$wrappedCode += $sourceCode
 			[System.IO.File]::WriteAllLines($destination, $wrappedCode)
 		} else {
-			[System.IO.IOException]$IOException = [System.IO.IOException]::new("The file '$Destination' already exists.")
+			[System.IO.IOException]$IOException = [System.IO.IOException]::new("The file '$destination' already exists.")
 			[System.Management.Automation.ErrorRecord]$errorRecord = [System.Management.Automation.ErrorRecord]::new($IOException, 'FileExists,HofmanniaStudios.Commands.BuildWrappedScript', 'WriteError', $destination)
-			$PSCmdlet.ThrowTerminatingError($errorRecord)
+			$PSCmdlet.WriteError($errorRecord)
+			return
 		}
 	}
 }
