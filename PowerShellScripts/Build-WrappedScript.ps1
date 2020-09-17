@@ -96,7 +96,7 @@
 [CmdletBinding(ConfirmImpact='Medium', PositionalBinding=$false, SupportsShouldProcess)]
 
 Param (
-	[Parameter(HelpMessage='The path to the .ps1 file to wrap.', Mandatory, Position=0, ValueFromPipeline)]
+	[Parameter(HelpMessage='The path of the .ps1 file to wrap.', Mandatory, Position=0, ValueFromPipeline)]
 	[string]
 	$InputScript,
 
@@ -106,15 +106,23 @@ Param (
 )
 
 Begin {
-	$PSCmdlet.WriteDebug('Setting .NET CurrentDirectory')
-	[string]$currentPath = (Get-Location).Path
-	[System.IO.Directory]::SetCurrentDirectory($currentPath)
+	
+	[string]$workingDirectory = ''
+	if ($PWD.Provider.Name -eq 'FileSystem') {
+		$PSCmdlet.WriteDebug('Setting .NET CurrentDirectory')
+		$workingDirectory = $PWD.Path
+	} else {
+		$workingDirectory = $env:USERPROFILE
+	}
+
+	[System.IO.Directory]::SetCurrentDirectory($workingDirectory)
+
 }
 
 Process{
 	
 	if ($InputScript -notmatch '.ps1$') {
-		[System.IO.IOException]$IOException = [System.IO.IOException]::new("The file '$InputScript' is not a valid .ps1 file.")
+		[System.IO.IOException]$IOException = "The file '$InputScript' is not a valid .ps1 file."
 		[System.Management.Automation.ErrorRecord]$errorRecord = [System.Management.Automation.ErrorRecord]::new($IOException, 'NotValidInputFile,HofmanniaStudios.Commands.BuildWrappedScript', 'InvalidData', $InputScript)
 		$PSCmdlet.WriteError($errorRecord)
 		return
@@ -127,7 +135,7 @@ Process{
 		return
 	}
 
-	[string]$destination = $currentPath + '\' + ($InputScript -replace '.*\\','' -replace '\.ps1','.cmd')
+	[string]$destination = $workingDirectory + '\' + ($InputScript -replace '.*\\','' -replace '\.ps1','.cmd')
 
 	if ($PSCmdlet.ShouldProcess($destination, 'Create File')) {
 		if (![System.IO.File]::Exists($destination) -or $Force) {
@@ -139,7 +147,7 @@ Process{
 			$wrappedCode += $sourceCode
 			[System.IO.File]::WriteAllLines($destination, $wrappedCode)
 		} else {
-			[System.IO.IOException]$IOException = [System.IO.IOException]::new("The file '$destination' already exists.")
+			[System.IO.IOException]$IOException = "The file '$destination' already exists."
 			[System.Management.Automation.ErrorRecord]$errorRecord = [System.Management.Automation.ErrorRecord]::new($IOException, 'FileExists,HofmanniaStudios.Commands.BuildWrappedScript', 'WriteError', $destination)
 			$PSCmdlet.WriteError($errorRecord)
 			return
