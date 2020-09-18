@@ -2,8 +2,8 @@
 									#																																			#
 									#														FileName	Build-WrappedScript.ps1													#
 									#														Author		John Hofmann															#
-									#														Version		0.0.1																	#
-									#														Date		09/15/2020																#
+									#														Version		1.0.0																	#
+									#														Date		09/18/2020																#
 									#																																			#
 									#											Copyright © 2020 John Hofmann All Rights Reserved												#
 									#											https://github.com/John-Hofmann/HofmanniaStudios												#
@@ -24,6 +24,7 @@
 									#	Date			Version		Notes																										#
 									#	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
 									#	09/15/2020		0.0.1		Initial Build																								#
+									#	09/18/2020		1.0.0		Initial Release Version																						#
 									#																																			#
 									#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 									#														  Known Issues																		#
@@ -34,62 +35,62 @@
 
 <#
 .SYNOPSIS
-	A brief description of the function or script. This keyword can be used only once in each topic.
+	Wraps a .ps1 file in a .cmd file for ease of execution.
 
 .DESCRIPTION
-	A detailed description of the function or script. This keyword can be used only once in each topic.
+	The Build-WrappedScript cmdlet wraps the contents of a .ps1 file in a .cmd file to enable double click execution.
 
-.PARAMETER ParameterName
-	The description of a parameter. Add a ".PARAMETER" keyword for each parameter in the function or script syntax.
+	The InputScript parameter identifies the source .ps1 file. You can also pass a string object through the pipeline to the InputScript parameter to enable processing multiple .ps1 files at once.
 
-	Type the parameter name on the same line as the ".PARAMETER" keyword. Type the parameter description on the lines following the ".PARAMETER" keyword. Windows PowerShell interprets all text between the ".PARAMETER" line and the next keyword or the end of the comment block as part of the parameter description. The description can include paragraph breaks.
+	The resulting .cmd file will be created in the current PowerShell working directory, or the User Profile directory if the current working directory is not a FileSystem directory. It will have the same file name as the source .ps1 file, but with a .cmd extension instead of .ps1.
 
-.PARAMETER <Parameter-Name>
-	The Parameter keywords can appear in any order in the comment block, but the function or script syntax determines the order in which the parameters (and their descriptions) appear in help topic. To change the order, change the syntax.
+.PARAMETER InputScript
+	The existing .ps1 script to be wrapped.
 
-	You can also specify a parameter description by placing a comment in the function or script syntax immediately before the parameter variable name. If you use both a syntax comment and a Parameter keyword, the description associated with the Parameter keyword is used, and the syntax comment is ignored.
+.PARAMETER Force
+	Forces this cmdlet to create a .cmd file that overwrites and existing .cmd file. By default, this cmdlet fails if the destination file already exists.
 
 .EXAMPLE
-	Example.ps1
+	.\Build-WrappedScript.ps1 -InputScript Foo.ps1
 
-	A sample command that uses the function or script, optionally followed by sample output and a description. Repeat this keyword for each example.
+	Creates Foo.cmd file containing the wrapped code from Foo.ps1 in the current directory.
+
+	Will write an error and fail if Foo.cmd already exists.
+
+.EXAMPLE
+	.\Build-WrappedScript.ps1 Foo.ps1
+
+	The same as Example 1. The InputScript parameter is positional and does not have to be named.
+
+.EXAMPLE
+	.\Build-WrappedScript.ps1 Foo.ps1 -Force
+
+	Creates Foo.cmd file containing the wrapped code from Foo.ps1 in the current directory.
+
+	This will overwrite an existing Foo.cmd
+
+.EXAMPLE
+	'Foo.ps1','Bar.ps1' | .\Build-WrappedScript.ps1
+
+	Uses piped input to wrap multiple .ps1 files.
+
+	The InputScript parameter accepts values from the pipeline, allowing you to wrap multiple .ps1 files at once.
 
 .INPUTS
-	The Microsoft .NET Framework types of objects that can be piped to the function or script. You can also include a description of the input objects.
+	System.String
+		You can pipe a value for the InputScript to this cmdlet.
 
 .OUTPUTS
-	The .NET Framework type of the objects that the cmdlet returns. You can also include a description of the returned objects.
+	None
 
 .NOTES
-	Additional information about the function or script.
+	This cmdlet is only designed to work with scripts that do not require parameters, to allow ease of execution by double clicking. Scripts with parameters would require the user to enter a command line anyway, so wrapping them would not serve much purpose.
+
+	If you feel there is a meaningful use case for wrapping parameterized scripts, please contact me, and I will look into it.
 
 .LINK
-	http:\\google.com
+	https://github.com/John-Hofmann/HofmanniaStudios/blob/master/PowerShellScripts/Build-WrappedScript.ps1
 	
-.LINK
-	The name of a related topic. The value appears on the line below the ".LINK" keyword and must be preceded by a comment symbol # or included in the comment block.
-	Repeat the ".LINK" keyword for each related topic.
-	This content appears in the Related Links section of the help topic.
-	The "Link" keyword content can also include a Uniform Resource Identifier (URI) to an online version of the same help topic. The online version opens when you use the Online parameter of Get-Help. The URI must begin with "http" or "https".
-	The HelpURI parameter of CmdletBinding supersedes this.
-
-.COMPONENT
-	The technology or feature that the function or script uses, or to which it is related. This content appears when the Get-Help command includes the Component parameter of Get-Help.
-
-.COMPONENT
-	Component
-
-.ROLE
-	The user role for the help topic. This content appears when the Get-Help command includes the Role parameter of Get-Help.
-
-.ROLE
-	Role
-
-.FUNCTIONALITY
-	The intended use of the function. This content appears when the Get-Help command includes the Functionality parameter of Get-Help.
-
-.FUNCTIONALITY
-	Functionality
 #>
 
 
