@@ -1,37 +1,38 @@
-﻿									#############################################################################################################################################
-									#																																			#
-									#														FileName	Build-WrappedScript.ps1													#
-									#														Author		John Hofmann															#
-									#														Version		1.0.0																	#
-									#														Date		09/18/2020																#
-									#																																			#
-									#											Copyright © 2020 John Hofmann All Rights Reserved												#
-									#											https://github.com/John-Hofmann/HofmanniaStudios												#
-									#																																			#
-									#									This program is free software: you can redistribute it and/or modify									#
-									#									it under the terms of the GNU General Public License as published by									#
-									#										the Free Software Foundation, either version 3 of the License, or									#
-									#													(at your option) any later version.														#
-									#																																			#
-									#										This program is distributed in the hope that it will be useful,										#
-									#										but WITHOUT ANY WARRANTY; without even the implied warranty of										#
-									#										MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the										#
-									#												GNU General Public License for more details.												#
-									#																																			#
-									#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
-									#															Changelog																		#
-									#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
-									#	Date			Version		Notes																										#
-									#	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
-									#	09/15/2020		0.0.1		Initial Build																								#
-									#	09/18/2020		1.0.0		Initial Release Version																						#
-									#																																			#
-									#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
-									#														  Known Issues																		#
-									#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
-									#	None																																	#
-									#																																			#
-									#############################################################################################################################################
+﻿#############################################################################################################################################
+#																																			#
+#														FileName	Build-WrappedScript.ps1													#
+#														Author		John Hofmann															#
+#														Version		1.1.0																	#
+#														Date		09/21/2020																#
+#																																			#
+#											Copyright © 2020 John Hofmann All Rights Reserved												#
+#											https://github.com/John-Hofmann/HofmanniaStudios												#
+#																																			#
+#									This program is free software: you can redistribute it and/or modify									#
+#									it under the terms of the GNU General Public License as published by									#
+#										the Free Software Foundation, either version 3 of the License, or									#
+#													(at your option) any later version.														#
+#																																			#
+#										This program is distributed in the hope that it will be useful,										#
+#										but WITHOUT ANY WARRANTY; without even the implied warranty of										#
+#										MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the										#
+#												GNU General Public License for more details.												#
+#																																			#
+#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
+#															Changelog																		#
+#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
+#	Date			Version		Notes																										#
+#	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
+#	09/15/2020		0.0.1		Initial Build																								#
+#	09/18/2020		1.0.0		Initial Release Version																						#
+#	09/21/2020		1.1.0		Added -Encoded parameter to allow for Base64 encoded wrapping												#
+#																																			#
+#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
+#														  Known Issues																		#
+#═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
+#	None																																	#
+#																																			#
+#############################################################################################################################################
 
 <#
 .SYNOPSIS
@@ -49,6 +50,9 @@
 
 .PARAMETER Force
 	Forces this cmdlet to create a .cmd file that overwrites and existing .cmd file. By default, this cmdlet fails if the destination file already exists.
+
+.PARAMETER Encoded
+	Uses Base64 encoding, rather than plain text for the script. This really only serves to obfuscate your code, as the standard wrapper doesn't have any size limit that I am aware of.
 
 .EXAMPLE
 	.\Build-WrappedScript.ps1 -InputScript Foo.ps1
@@ -76,6 +80,13 @@
 
 	The InputScript parameter accepts values from the pipeline, allowing you to wrap multiple .ps1 files at once.
 
+.EXAMPLE
+	.\Build-WrappedScript.ps1 Foo.ps1 -Encoded
+
+	Creates Foo.cmd file containing the wrapped Base64 encoded code from Foo.ps1 in the current directory.
+
+	Will write an error and fail if Foo.cmd already exists.
+
 .INPUTS
 	System.String
 		You can pipe a value for the InputScript to this cmdlet.
@@ -94,12 +105,16 @@
 #>
 
 
-[CmdletBinding(ConfirmImpact='Medium', PositionalBinding=$false, SupportsShouldProcess)]
+[CmdletBinding(ConfirmImpact = 'Medium', PositionalBinding = $false, SupportsShouldProcess)]
 
 Param (
-	[Parameter(HelpMessage='The path of the .ps1 file to wrap.', Mandatory, Position=0, ValueFromPipeline)]
+	[Parameter(HelpMessage = 'The path of the .ps1 file to wrap.', Mandatory, Position = 0, ValueFromPipeline)]
 	[string]
 	$InputScript,
+
+	[Parameter()]
+	[switch]
+	$Encoded,
 
 	[Parameter()]
 	[switch]
@@ -120,7 +135,7 @@ Begin {
 
 }
 
-Process{
+Process {
 	
 	if ($InputScript -notmatch '.ps1$') {
 		[System.IO.IOException]$IOException = "The file '$InputScript' is not a valid .ps1 file."
@@ -130,23 +145,35 @@ Process{
 	}
 
 	try {
-		[string[]]$sourceCode = [System.IO.File]::ReadAllLines($InputScript)
+		[string]$sourceCode = [System.IO.File]::ReadAllText($InputScript)
 	} catch {
 		$PSCmdlet.WriteError($_)
 		return
 	}
 
-	[string]$destination = $workingDirectory + '\' + ($InputScript -replace '.*\\','' -replace '\.ps1','.cmd')
+	[string]$destination = $workingDirectory + '\' + ($InputScript -replace '.*\\', '' -replace '\.ps1', '.cmd')
 
 	if ($PSCmdlet.ShouldProcess($destination, 'Create File')) {
 		if (![System.IO.File]::Exists($destination) -or $Force) {
-			[string[]]$wrappedCode ='@ECHO OFF'
-			$wrappedCode += 'START "%~nx0" /D "%ALLUSERSPROFILE%" /WAIT /B PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command $codeStart = (Select-String -Pattern ''^^:PowerShell Code Start'' -Path ''%~f0'').LineNumber; $lineCount = (Get-Content ''%~f0'').Length - $codeStart; Get-Content ''%~f0'' -Last $lineCount ^| ForEach-Object {$commands += \"$_`n\"}; $scriptBlock = [scriptblock]::Create($commands); Invoke-Command $scriptBlock'
+			[string[]]$wrappedCode = '@ECHO OFF'
+			[string]$lastLine = ''
+
+			if ($Encoded) {
+				[byte[]]$sourceBytes = [System.Text.Encoding]::Unicode.GetBytes($sourceCode)
+				[string]$encodedCommand = [System.Convert]::ToBase64String($sourceBytes)
+				$wrappedCode += 'PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command $encodedCommand = Get-Content ''%~f0'' -Last 1; $encodedCommand ^| %% {Start-Process PowerShell.exe -NoNewWindow -ArgumentList """-NoLogo -NoProfile -ExecutionPolicy Bypass -EncodedCommand $_"""}'
+				$lastLine = $encodedCommand
+			} else {
+				$wrappedCode += 'PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command $codeStart = (Select-String -Pattern ''^^:PowerShell Code Start'' -Path ''%~f0'').LineNumber; $lineCount = (Get-Content ''%~f0'').Length - $codeStart; Get-Content ''%~f0'' -Last $lineCount ^| ForEach-Object {$commands += \"$_`n\"}; $scriptBlock = [scriptblock]::Create($commands); Invoke-Command $scriptBlock'
+				$lastLine = $sourceCode
+			}
+
 			$wrappedCode += 'EXIT /B %ERRORLEVEL%'
 			$wrappedCode += "`n"
 			$wrappedCode += ':PowerShell Code Start'
-			$wrappedCode += $sourceCode
+			$wrappedCode += $lastLine
 			[System.IO.File]::WriteAllLines($destination, $wrappedCode)
+			return
 		} else {
 			[System.IO.IOException]$IOException = "The file '$destination' already exists."
 			[System.Management.Automation.ErrorRecord]$errorRecord = [System.Management.Automation.ErrorRecord]::new($IOException, 'FileExists,HofmanniaStudios.Commands.BuildWrappedScript', 'WriteError', $destination)
@@ -154,4 +181,5 @@ Process{
 			return
 		}
 	}
+
 }
