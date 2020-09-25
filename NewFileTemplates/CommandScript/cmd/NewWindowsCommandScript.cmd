@@ -32,8 +32,61 @@
 									::																																			::
 									::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-<PLACE SCRIPT HERE>
+::NAME
+::    SCRIPTNAME
+::    <-4 SPACES    Do not exceed 73 columns to prevent text wrapping.->|
+::
+::
+::SYNOPSIS
+::    Synopsis                                                          |
+::
+::
+::SYNTAX
+::    Syntax                                                            |
+::
+::
+::DESCRIPTION
+::    Description                                                       |
+::
+::
+::PARAMETERS
+::    -PARAMETER1                                                       |
+::        Description.
+::        <-8 SPACES Don't exceed 73 columns to prevent text wrapping.->|
+::
+::    -PARAMETER2                                                       |
+::        Description.                                                  |
+::
+::
+:ENDOFPARAMETERS
+::INPUTS
+::    Type of input                                                     |
+::        Description of input.                                         |
+::
+::
+::OUTPUTS
+::    Type of output                                                    |
+::        Description of output.                                        |
+::
+::
+::EXIT CODES
+::    %ERRORLEVEL% = Description of exit code.                          |
+::
+::
+::NOTES
+::
+::    NOTES                                                             |
+::
+::
+::    -------------------------- EXAMPLE 1 --------------------------
+::    <-4 SPACES       Do not exceed 69 columns to keep alignment.->|
+::    EXAMPLE
+::
+::
+:ENDOFHELP
+
+::<PLACE SCRIPT HERE>
 EXIT /B 0
 
 :**FUNCTIONS**
-<PLACE FUNCTIONS HERE>
+::<PLACE FUNCTIONS HERE>
