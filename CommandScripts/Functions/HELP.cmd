@@ -2,8 +2,8 @@
 									::																																			::
 									::														FileName	HELP.cmd																::
 									::														Author		John Hofmann															::
-									::														Version		0.0.1																	::
-									::														Date		09/23/2020																::
+									::														Version		1.0.0																	::
+									::														Date		09/25/2020																::
 									::																																			::
 									::											Copyright © 2020 John Hofmann All Rights Reserved												::
 									::											https://github.com/John-Hofmann/HofmanniaStudios												::
@@ -24,6 +24,7 @@
 									::	Date			Version		Notes																										::
 									::	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── ::
 									::	09/23/2020		0.0.1		Initial Build																								::
+									::	09/25/2020		1.0.0		Initial Release Version																						::
 									::																																			::
 									::══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════::
 									::														  Known Issues																		::
@@ -35,6 +36,7 @@
 ::NAME
 ::    HELP.cmd
 ::    <-4 SPACES    Do not exceed 73 columns to prevent text wrapping.->|
+::
 ::
 ::SYNOPSIS
 ::    Provides help functionality for command line scripts              |
@@ -53,6 +55,7 @@
 ::PARAMETERS
 ::    None                                                              |
 ::
+::
 :ENDOFPARAMETERS
 ::INPUTS
 ::    None                                                              |
@@ -63,9 +66,9 @@
 ::
 ::
 ::EXIT CODES
-::    0 = Success                                                       |
-::    5926 - ::NAME NOT FOUND
-::    5945 - :ENDOFHELP NOT FOUND
+::    0  --  'Success'                                                  |
+::    1090 - '::NAME NOT FOUND'
+::    1404 - ':ENDOFHELP NOT FOUND'
 ::
 ::
 ::NOTES
@@ -82,17 +85,37 @@
 @ECHO OFF
 SETLOCAL ENABLEDELAYEDEXPANSION
 	SET "FILE="%~f0""
-	SET "SKIP="
-	::Finds the line number of the line beginning with ::NAME, and, if SKIP is not already defined, sets SKIP to that number minus 2.
-	::This prevents a second ::NAME line further down the file from causing incorrect output.
-	::The delims=: is required to ensure that only the line number is returned as %A, and not the line text.
-	FOR /F "delims=:" %%A IN ('FINDSTR /B /N "::NAME" %FILE%') DO IF NOT DEFINED SKIP SET /A "SKIP=%%A-2"
-	::Exits with exit code 5926 if no line beginning with ::NAME is found.
-	IF NOT DEFINED SKIP EXIT /B 5926
-	::Displays the contents of all lines starting with :: between the lines ::NAME and :ENDOFHELP.
-	::usebackq is necessary to provide support for filepaths with spaces, as without it anything enclosed in " is considered a string instead of a file.
-	FOR /F "usebackq skip=%SKIP% delims=" %%A IN (%FILE%) DO (
-		SET "LINE=%%A"
-		IF "!LINE:~0,2!" EQU "::" (ECHO:!LINE:~2!) ELSE (IF "!LINE!" EQU ":ENDOFHELP" (ECHO: & EXIT /B 0))
+	SET /A SKIP = 0
+
+	::Parses each line of the file until getting to the ::NAME line, incrementing SKIP by 1 each time
+	::The usebackq option is used to prevent errors, in the case that %FILE% contains quotes due to spaces in the filename
+	FOR /F "usebackq" %%A IN (%FILE%) DO (
+		SET /A SKIP += 1
+		IF "%%A" EQU "::NAME" (
+			GOTO :BREAK1
+		)
 	)
-EXIT /B 5945
+
+	::Exits with exit code 1090 '::NAME NOT FOUND' if no ::NAME line is found
+	EXIT /B 1090
+	:BREAK1
+
+	::Displays the contents of all lines between the lines ::NAME and :ENDOFHELP.
+	::The usebackq option is used to prevent errors, in the case that %FILE% contains quotes due to spaces in the filename
+	FOR /F "usebackq skip=%SKIP% delims=" %%A IN (%FILE%) DO (
+		IF "%%A" EQU ":ENDOFHELP" (
+			GOTO :BREAK2
+		)
+		
+		SET "LINE=%%A"
+		IF "!LINE:~0,2!" EQU "::" (
+			ECHO:!LINE:~2!
+		)
+	)
+
+	::Exits with exit code 1404 ':ENDOFHELP NOT FOUND' if no ::NAME line is found
+	EXIT /B 1404
+
+:BREAK2
+
+EXIT /B 0
