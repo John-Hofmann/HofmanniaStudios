@@ -2,7 +2,7 @@
 #																																			#
 #														FileName	Get-Input.ps1															#
 #														Author		John Hofmann															#
-#														Version		0.1.0																	#
+#														Version		0.2.0																	#
 #														Date		09/28/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
@@ -25,6 +25,7 @@
 #	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
 #	09/25/2020		0.0.1		Initial Build																								#
 #	09/28/2020		0.1.0		Added an optional Title parameter to add text to the Title bar of the window								#
+#	09/28/2020		0.2.0		Added an optional TrimWhitespace parameter to remove whitespace from the beginning and end of the input		#
 #																																			#
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #														  Known Issues																		#
@@ -50,6 +51,24 @@
 
 	The same as Example 1, but "Enter a list of usernames" will be displayed in the Title bar.
 
+.EXAMPLE
+	.\Get-Input.ps1 -TrimWhitespace
+
+	Sample Input:
+		|This line has no leading or trailing whitespace|
+		|  This line has leading whitespace|
+		|This line has trailing whitespace |
+		|	This line has leading and trailing whitespace	|
+
+	Output:
+		|This line has no leading or trailing whitespace|
+		|This line has leading whitespace|
+		|This line has trailing whitespace|
+		|This line has leading and trailing whitespace|
+
+		Note that the | characters denote the beginning and ending of the line for
+		visual purposes, and are not part of the Input or Output.
+
 .INPUTS
 	None
 		You cannot pipe input to this script.
@@ -72,7 +91,12 @@ Param (
 	#The text to be displayed in the Title bar of the window.
 	[Parameter()]
 	[string]
-	$Title
+	$Title,
+
+	#Removes beginning and ending whitespace from the input before returning it.
+	[Parameter()]
+	[switch]
+	$TrimWhitespace
 )
 
 Process {
@@ -94,7 +118,7 @@ Process {
 	$form.AutoSize = $true
 	$form.FormBorderStyle = 'FixedSingle'
 	$form.StartPosition = "CenterScreen"
-	if ($Title) {$form.Text = $Title}
+	if ($Title) { $form.Text = $Title }
 	$form.TopMost = $true
 	
 	[System.Windows.Forms.TextBox]$textBox = [System.Windows.Forms.TextBox]::new()
@@ -130,7 +154,10 @@ Process {
 	$form.CancelButton = $cancelButton
 	[void]$form.ShowDialog()
 	#, ($form.Tag -replace "^\s*", "" -replace "\s*$", "" -replace "\s*\r\n\s*", "`n") -split "`n"
-	[string[]]$returnValue = ($form.Tag -replace "\r\n","`n" -split "`n")
-	return $returnValue
-
+	#[string[]]$returnValue = ($form.Tag -replace "\r\n","`n" -split "`n")
+	if (!$TrimWhitespace) {
+		return $textBox.Text.Split("`n")
+	} else {
+		return $textBox.Text.Split("`n") -replace "^\s*", "" -replace "\s*$", ""
+	}
 }
