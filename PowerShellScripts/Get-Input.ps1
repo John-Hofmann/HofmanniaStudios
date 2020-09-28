@@ -2,8 +2,8 @@
 #																																			#
 #														FileName	Get-Input.ps1															#
 #														Author		John Hofmann															#
-#														Version		0.0.1																	#
-#														Date		09/25/2020																#
+#														Version		0.1.0																	#
+#														Date		09/28/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
 #											https://github.com/John-Hofmann/HofmanniaStudios												#
@@ -24,6 +24,7 @@
 #	Date			Version		Notes																										#
 #	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
 #	09/25/2020		0.0.1		Initial Build																								#
+#	09/28/2020		0.1.0		Added an optional Title parameter to add text to the Title bar of the window								#
 #																																			#
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #														  Known Issues																		#
@@ -44,6 +45,11 @@
 
 	Each username entered into the textbox would be piped out to Get-ADUser.
 
+.EXAMPLE
+	.\Get-Input.ps1 -Title "Enter a list of usernames" | Get-ADUser
+
+	The same as Example 1, but "Enter a list of usernames" will be displayed in the Title bar.
+
 .INPUTS
 	None
 		You cannot pipe input to this script.
@@ -62,16 +68,22 @@
 
 [CmdletBinding(<#DefaultParameterSetName=[string], HelpUri = 'https://www.google.com', PositionalBinding = $false, #>)]
 [OutputType([string[]])] #Provides the value of the OutputType property of the System.Management.Automation.FunctionInfo object that the Get-Command cmdlet returns
-Param ()
+Param (
+	#The text to be displayed in the Title bar of the window.
+	[Parameter()]
+	[string]
+	$Title
+)
 
 Process {
 
+	#In 100,000 trials, this code was 3 times faster than the built in Add-Type Cmdlet, so I'm using it here.
 	function Add-Type {
 		param (
 			[string]$AssemblyName
 		)
 	
-		[string[]]$assemblyInfo = [System.IO.Directory]::EnumerateDirectories("C:\Windows\Microsoft.NET\assembly\GAC_MSIL\$AssemblyName") -replace '.*v4.0_', '' -replace '__', '_' -split '_'
+		[string[]]$assemblyInfo = [System.IO.Directory]::EnumerateDirectories("$env:windir\Microsoft.NET\assembly\GAC_MSIL\$AssemblyName") -replace '.*v4.0_', '' -replace '__', '_' -split '_'
 		[string]$fullName = "$AssemblyName, Version=$($assemblyInfo[0]), Culture=neutral, PublicKeyToken=$($assemblyInfo[1])"
 		[void][System.Reflection.Assembly]::Load($fullName)
 	}
@@ -82,6 +94,7 @@ Process {
 	$form.AutoSize = $true
 	$form.FormBorderStyle = 'FixedSingle'
 	$form.StartPosition = "CenterScreen"
+	if ($Title) {$form.Text = $Title}
 	$form.TopMost = $true
 	
 	[System.Windows.Forms.TextBox]$textBox = [System.Windows.Forms.TextBox]::new()
@@ -114,6 +127,7 @@ Process {
 	$form.Controls.Add($okButton)
 	$form.Controls.Add($cancelButton)
 	$form.ActiveControl = $textBox
+	$form.CancelButton = $cancelButton
 	[void]$form.ShowDialog()
 	#, ($form.Tag -replace "^\s*", "" -replace "\s*$", "" -replace "\s*\r\n\s*", "`n") -split "`n"
 	[string[]]$returnValue = ($form.Tag -replace "\r\n","`n" -split "`n")
