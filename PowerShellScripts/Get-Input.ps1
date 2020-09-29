@@ -2,7 +2,7 @@
 #																																			#
 #														FileName	Get-Input.ps1															#
 #														Author		John Hofmann															#
-#														Version		0.3.0																	#
+#														Version		1.0.0																	#
 #														Date		09/29/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
@@ -31,6 +31,12 @@
 #										(https://docs.microsoft.com/en-us/dotnet/api/system.windows.forms.textboxbase.shortcutsenabled)		#
 #								Disabled wordwrap																							#
 #								Improved return methods to clear up some issues with blank lines											#
+#	09/29/2020		1.0.0		Initial Release Version																						#
+#								Added drag and drop functionality to the textbox															#
+#								Form explicitly activates when shown, resolving occasional bug where form was not activating at creation	#
+#								Updated comments																							#
+#								Added the ability to double click the textbox to select all text											#
+#								Added mnemonic keys to Ok and Cancel buttons																#
 #																																			#
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #														  Known Issues																		#
@@ -75,8 +81,8 @@
 		visual purposes, and are not part of the Input or Output.
 
 .INPUTS
-	None
-		You cannot pipe input to this script.
+	System.Windows.Forms.DataObject
+		You can drag files or text onto the textbox to add the text or file contents to the textbox.
 
 .OUTPUTS
 	System.String or System.String[]
@@ -91,7 +97,7 @@
 
 
 [CmdletBinding(<#DefaultParameterSetName=[string], HelpUri = 'https://www.google.com', PositionalBinding = $false, #>)]
-[OutputType([string[]])] #Provides the value of the OutputType property of the System.Management.Automation.FunctionInfo object that the Get-Command cmdlet returns
+[OutputType([string[]], [string])] #Provides the value of the OutputType property of the System.Management.Automation.FunctionInfo object that the Get-Command cmdlet returns
 Param (
 	#The text to be displayed in the Title bar of the window.
 	[Parameter()]
@@ -119,13 +125,23 @@ Process {
 
 	Add-Type -AssemblyName System.Drawing
 	Add-Type -AssemblyName System.Windows.Forms
+	
+	[System.Windows.Forms.Application]::EnableVisualStyles()
+
+	#Creating the form body
 	[System.Windows.Forms.Form]$form = [System.Windows.Forms.Form]::new()
 	$form.AutoSize = $true
 	$form.FormBorderStyle = 'FixedSingle'
 	$form.StartPosition = "CenterScreen"
 	if ($Title) { $form.Text = $Title }
 	$form.TopMost = $true
+
+	#Defining events for the form body
+	$form.Add_Shown( {
+			$form.Activate()
+		})
 	
+	#Creating the input textbox
 	[System.Windows.Forms.TextBox]$textBox = [System.Windows.Forms.TextBox]::new()
 	$textBox.AcceptsReturn = $true
 	$textBox.AllowDrop = $true
@@ -135,19 +151,44 @@ Process {
 	$textBox.ShortcutsEnabled = $true
 	$textBox.Size = [System.Drawing.Size]::new(575, 240)
 	$textBox.WordWrap = $false
-	
+
+	#Defining events for the textbox
+	$textBox.Add_DoubleClick( {
+			$textBox.SelectAll()
+		})
+
+	$textBox.Add_DragDrop( {
+			if ($_.Data.GetDataPresent('FileDrop')) {
+				$_.Data.GetData('FileDrop') | ForEach-Object {
+					$textBox.AppendText([System.IO.File]::ReadAllText($_))
+				}
+			} elseif ($_.Data.GetDataPresent('Text')) {
+				$textBox.AppendText($_.Data.GetData('Text'))
+			}
+		})
+
+	$textBox.Add_DragEnter( {
+			$_.Effect = 'Copy'
+		})
+
+	#Creating the Ok button
 	[System.Windows.Forms.Button]$okButton = [System.Windows.Forms.Button]::new()
 	$okButton.Location = [System.Drawing.Size]::new(415, 250)
-	$okButton.Text = "Ok"
+	$okButton.Text = "&Ok"
+
+	#Defining events for the Ok button
 	$okButton.Add_Click(
 		{
 			$form.Close()
 		}
 	)
 	
+	#Creating the Cancel button
 	[System.Windows.Forms.Button]$cancelButton = [System.Windows.Forms.Button]::new()
 	$cancelButton.Location = [System.Drawing.Size]::new(495, 250)
-	$cancelButton.Text = "Cancel"
+	$cancelButton.Text = "&Cancel"
+
+	#Defining events for the Cancel button
 	$cancelButton.Add_Click(
 		{
 			$textBox.Text = $null
@@ -155,20 +196,19 @@ Process {
 		}
 	)
 	
+	#Adding the controls to the form
 	$form.Controls.Add($textBox)
 	$form.Controls.Add($okButton)
 	$form.Controls.Add($cancelButton)
 	$form.ActiveControl = $textBox
 	$form.CancelButton = $cancelButton
+
+	#Showing the form interactively
 	[void]$form.ShowDialog()
-	#, ($form.Tag -replace "^\s*", "" -replace "\s*$", "" -replace "\s*\r\n\s*", "`n") -split "`n"
-	#[string[]]$returnValue = ($form.Tag -replace "\r\n","`n" -split "`n")
 	if (!$TrimWhitespace) {
-		#return $textBox.Text.Split("`n")
 		return $textBox.Lines
 	} else {
 		$textBox.Text = $textBox.Text -replace "\s*\r\n\s*", "`n" -replace "^\n\s*", '' -replace "\n\s*$", ''
-		#return $textBox.Text.Split("`n") -replace "^\s*", "" -replace "\s*$", ""
 		return $textBox.Lines -replace "^\s*", "" -replace "\s*$", ""
 	}
 }
