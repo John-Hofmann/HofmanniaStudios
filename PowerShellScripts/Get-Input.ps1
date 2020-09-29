@@ -2,8 +2,8 @@
 #																																			#
 #														FileName	Get-Input.ps1															#
 #														Author		John Hofmann															#
-#														Version		0.2.0																	#
-#														Date		09/28/2020																#
+#														Version		0.3.0																	#
+#														Date		09/29/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
 #											https://github.com/John-Hofmann/HofmanniaStudios												#
@@ -26,6 +26,11 @@
 #	09/25/2020		0.0.1		Initial Build																								#
 #	09/28/2020		0.1.0		Added an optional Title parameter to add text to the Title bar of the window								#
 #	09/28/2020		0.2.0		Added an optional TrimWhitespace parameter to remove whitespace from the beginning and end of the input		#
+#	09/29/2020		0.3.0		Removed default max character limit of 32767																#
+#								Enabled shortcuts 																							#
+#										(https://docs.microsoft.com/en-us/dotnet/api/system.windows.forms.textboxbase.shortcutsenabled)		#
+#								Disabled wordwrap																							#
+#								Improved return methods to clear up some issues with blank lines											#
 #																																			#
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #														  Known Issues																		#
@@ -123,16 +128,19 @@ Process {
 	
 	[System.Windows.Forms.TextBox]$textBox = [System.Windows.Forms.TextBox]::new()
 	$textBox.AcceptsReturn = $true
+	$textBox.AllowDrop = $true
+	$textBox.MaxLength = 0
 	$textBox.Multiline = $true
 	$textBox.ScrollBars = 'Both'
+	$textBox.ShortcutsEnabled = $true
 	$textBox.Size = [System.Drawing.Size]::new(575, 240)
+	$textBox.WordWrap = $false
 	
 	[System.Windows.Forms.Button]$okButton = [System.Windows.Forms.Button]::new()
 	$okButton.Location = [System.Drawing.Size]::new(415, 250)
 	$okButton.Text = "Ok"
 	$okButton.Add_Click(
 		{
-			[string]$form.Tag = $textBox.Text
 			$form.Close()
 		}
 	)
@@ -142,7 +150,7 @@ Process {
 	$cancelButton.Text = "Cancel"
 	$cancelButton.Add_Click(
 		{
-			$form.Tag = $null
+			$textBox.Text = $null
 			$form.Close()
 		}
 	)
@@ -156,8 +164,11 @@ Process {
 	#, ($form.Tag -replace "^\s*", "" -replace "\s*$", "" -replace "\s*\r\n\s*", "`n") -split "`n"
 	#[string[]]$returnValue = ($form.Tag -replace "\r\n","`n" -split "`n")
 	if (!$TrimWhitespace) {
-		return $textBox.Text.Split("`n")
+		#return $textBox.Text.Split("`n")
+		return $textBox.Lines
 	} else {
-		return $textBox.Text.Split("`n") -replace "^\s*", "" -replace "\s*$", ""
+		$textBox.Text = $textBox.Text -replace "\s*\r\n\s*", "`n" -replace "^\n\s*", '' -replace "\n\s*$", ''
+		#return $textBox.Text.Split("`n") -replace "^\s*", "" -replace "\s*$", ""
+		return $textBox.Lines -replace "^\s*", "" -replace "\s*$", ""
 	}
 }
