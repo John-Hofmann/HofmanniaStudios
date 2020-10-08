@@ -1,9 +1,9 @@
 ﻿#############################################################################################################################################
 #																																			#
-#														FileName	FileName																#
+#														FileName	Get-PackageFiles.ps1													#
 #														Author		John Hofmann															#
 #														Version		0.0.1																	#
-#														Date		MM/DD/YYYY																#
+#														Date		10/07/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
 #											https://github.com/John-Hofmann/HofmanniaStudios												#
@@ -78,30 +78,33 @@
 [CmdletBinding(ConfirmImpact = [System.Management.Automation.ConfirmImpact]::Medium, <#DefaultParameterSetName=[string], #>HelpUri = 'https://www.google.com', SupportsPaging = $false, SupportsShouldProcess = $true, PositionalBinding = $false)]
 #[OutputType([type1], [type2], ParameterSetName=[string])] #Provides the value of the OutputType property of the System.Management.Automation.FunctionInfo object that the Get-Command cmdlet returns
 Param (
-	#	[Parameter(Mandatory=[bool], Position=[naturalnumber], ParameterSetName=[string], ValueFromPipeline=[bool], ValueFromPipelineByPropertyName=[bool], ValueFromRemainingArguments=[bool], HelpMessage='Displays when a mandatory parameter value is missing')]
-	#	[Alias([string[]])] #Establishes an alternate name for the parameter. There's no limit to the number of aliases that you can assign to a parameter
-	#	[type]
-	#	[AllowNull()] #Allows the value of a mandatory parameter to be $null
-	#	[AllowEmptyString()] #Allows the value of a mandatory parameter to be an empty string ("")
-	#	[AllowEmptyCollection()] #Allows the value of a mandatory parameter to be an empty collection @()
-	#	[ValidateCount([naturalnumber], [naturalnumber])] #Specifies the minimum and maximum number of parameter values that a parameter accepts
-	#	[ValidateLength([naturalnumber], [naturalnumber])] #Specifies the minimum and maximum number of characters in a parameter or variable value
-	#	[ValidatePattern([regex])] #Specifies a regular expression that's compared to the parameter or variable value
-	#	[ValidateRange([naturalnumber], [naturalnumber])] #Specifies a numeric range for the parameter or variable value
-	#	[ValidateScript([scriptblock])] #Specifies a script that is used to validate a parameter or variable value. PowerShell pipes the value to the script, and generates an error if the script returns $false or if the script throws an exception
-	#	[ValidateSet([array])] #Specifies a set of valid values for a parameter or variable and enables tab completion
-	#	[ValidateNotNull()] #Specifies that the parameter value can't be $null
-	#	[ValidateNotNullOrEmpty()] #Specifies that the parameter value can't be $null and can't be an empty string ("")
-	#	[ValidateDrive('C', 'D', 'Variable', 'Function', etc...)] #Specifies that the parameter value must represent the path, that's referring to allowed drives only
-	#Text displayed by Get-Help for this Parameter
-	$ParameterName = 'defaultvalue',
+	# Parameter help description
+	[Parameter(Mandatory, Position = 0, HelpMessage = 'The path to the SCCMContentLib root directory')]
+	[Alias('Root')]
+	[string]
+	[ValidateNotNullOrEmpty()]
+	$SCCMContentLibRootPath,
+	
+	# Parameter help description
+	[Parameter(Mandatory, Position = 1, HelpMessage = 'The PackageID of the Package to download')]
+	[Alias('ID')]
+	[string]
+	[ValidatePattern('^[0-9A-F]{8}$')]
+	$PackageID,
 
 	# Parameter help description
-	[Parameter(Mandatory)]
-	[ValidateSet('Fruits', 'Vegetables')]
-	$Type,
+	[Parameter()]
+	[string]
+	[ValidateNotNullOrEmpty()]
+	$Destination = "$env:windir\ccmcache",
 
 	# Parameter help description
+	[Parameter()]
+	[pscredential]
+	$Credential
+
+	
+	<#
 	[Parameter(Mandatory)]
 	[ArgumentCompleter( {
 			param ($commandName, $ParameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
@@ -122,40 +125,96 @@ Param (
 			}
 		})]
 	$Value
+	#>
 	
 )
 
-DynamicParam {
+Begin {
 
-	[System.Management.Automation.RuntimeDefinedParameterDictionary]$paramDictionary = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
-
-	if ((Get-Location).Path -eq 'C:\') {
-		[Parameter]$parameterAttributes = [Parameter]::new()
-		$parameterAttributes.HelpMessage = 'Displays when a mandatory parameter value is missing'
-		$parameterAttributes.Mandatory = $false
-		$parameterAttributes.ParameterSetName = 'SetName'
-		$parameterAttributes.Position = 1
-		$parameterAttributes.ValueFromPipeline = $false
-		$parameterAttributes.ValueFromPipelineByPropertyName = $false
-		$parameterAttributes.ValueFromRemainingArguments = $false
-		[System.Management.Automation.RuntimeDefinedParameter]$DynamicParameter = [System.Management.Automation.RuntimeDefinedParameter]::new('DynamicParameter', [string], $parameterAttributes)
-		$paramDictionary.Add('DynamicParameter', $DynamicParameter)
-		Register-ArgumentCompleter -CommandName PowerShellNewFileTemplate.ps1 -ParameterName DynamicParameter -ScriptBlock { (Get-ChildItem -File).FullName }
+	[string]$workingDirectory = ''
+	if ($PWD.Provider.Name -eq 'FileSystem') {
+		$PSCmdlet.WriteDebug('Setting .NET CurrentDirectory')
+		$workingDirectory = $PWD.Path
+	} else {
+		$workingDirectory = $env:USERPROFILE
 	}
 
-	return $paramDictionary
+	[System.IO.Directory]::SetCurrentDirectory($workingDirectory)
+
+	function Get-IniContent {
+		param (
+			[string]$filePath
+		)
+
+		[hashtable]$iniObject = @{}
+
+		switch -regex -file $filePath {
+
+			'\[(.+)\]' {
+				[string]$section = $Matches[1]
+				$iniObject.Add($section, @{})
+			}
+
+			'(\S+?)\s*=\s*(.*?)\s*$' {
+				[string]$name = $Matches[1]
+				[string]$value = $Matches[2]
+				$iniObject.$section.Add($name, $value)
+			}
+
+			Default {}
+
+		}
+
+		return $iniObject
+		
+	}
+
 }
 
-Begin {}
-
 Process {
-	
-	if ($PSCmdlet.ShouldProcess("Target", "Operation")) {
-		$DynamicParameter #Commands that require confirmation if ComfirmPreference is equal to or below ConfirmImpact level
+
+	$Destination += "\$PackageID"
+	[string]$packageINI = "$SCCMContentLibRootPath\PkgLib\$PackageID.INI"
+
+	if (![System.IO.File]::Exists($packageINI)) {
+		[System.IO.IOException]$IOException = "The file '$packageINI' does not exist. Verify that the SCCMContentLibRootPath and PackageID are valid."
+		[System.Management.Automation.ErrorRecord]$errorRecord = [System.Management.Automation.ErrorRecord]::new($IOException, 'PackageFileNotFound,HofmanniaStudios.Commands.GetPackageFiles', 'ObjectNotFound', $packageINI)
+		$PSCmdlet.WriteError($errorRecord)
+		return
 	}
 
-	if ($PSCmdlet.ShouldContinue("Target", "Operation")) {
-		$DynamicParameter.Value#Commands that always require confirmation
+	[hashtable]$packageINIContents = Get-IniContent -filePath $packageINI
+
+	foreach ($package in $packageINIContents.Packages.Keys) {
+		[string]$dataLibDirectory = "$SCCMContentLibRootPath\DataLib\$package"
+		[string[]]$packageFileINIs = [System.IO.Directory]::EnumerateFiles($dataLibDirectory, '*', 'AllDirectories')
+
+		foreach ($file in $packageFileINIs) {
+			[hashtable]$packageFileINIContents = Get-IniContent -filePath $file
+			[string]$hashedFileName = $packageFileINIContents.File.Hash
+			[string]$fileLibDirectory = "$SCCMContentLibRootPath\FileLib\" + $hashedFileName.Substring(0, 4)
+			[string]$sourcePath = "$fileLibDirectory\$hashedFileName"
+			[string]$destinationDirectory = [System.IO.Path]::GetDirectoryName($file)
+			[string]$destinationDirectory = $destinationDirectory.Replace($dataLibDirectory, $Destination)
+
+			if ($PSCmdlet.ShouldProcess($destinationDirectory, 'Create Directory')) {
+				if (![System.IO.Directory]::Exists($destinationDirectory)) {
+					[void][System.IO.Directory]::CreateDirectory($destinationDirectory)
+				}
+			}
+
+			[string]$destianationFileName = $file -replace '^.*\\(.*).INI$', '$1'
+			[string]$destinationPath = "$destinationDirectory\$destianationFileName"
+
+			if ($PSCmdlet.ShouldProcess($destinationPath, 'Create File')) {
+				'Downloading ' + $destianationFileName + '...'
+				'Source: ' + $sourcePath
+				'Destination: ' + $destinationPath
+				''
+
+				[System.IO.File]::Copy($sourcePath, $destinationPath)
+			}
+		}
 	}
 	
 }
