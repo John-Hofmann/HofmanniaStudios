@@ -2,8 +2,8 @@
 #																																			#
 #														FileName	Get-PackageFiles.ps1													#
 #														Author		John Hofmann															#
-#														Version		0.0.1																	#
-#														Date		10/07/2020																#
+#														Version		0.0.2																	#
+#														Date		10/09/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
 #											https://github.com/John-Hofmann/HofmanniaStudios												#
@@ -24,6 +24,7 @@
 #	Date			Version		Notes																										#
 #	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
 #	MM/DD/YYYY		0.0.1		Initial Build																								#
+#	MM/DD/YYYY		0.0.2		Updated downloading logic to account for packages that contain more than one distribution package			#
 #																																			#
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #														  Known Issues																		#
@@ -195,7 +196,7 @@ Process {
 			[string]$fileLibDirectory = "$SCCMContentLibRootPath\FileLib\" + $hashedFileName.Substring(0, 4)
 			[string]$sourcePath = "$fileLibDirectory\$hashedFileName"
 			[string]$destinationDirectory = [System.IO.Path]::GetDirectoryName($file)
-			[string]$destinationDirectory = $destinationDirectory.Replace($dataLibDirectory, $Destination)
+			[string]$destinationDirectory = $destinationDirectory.Replace($dataLibDirectory, "$Destination\$package")
 
 			if ($PSCmdlet.ShouldProcess($destinationDirectory, 'Create Directory')) {
 				if (![System.IO.Directory]::Exists($destinationDirectory)) {
