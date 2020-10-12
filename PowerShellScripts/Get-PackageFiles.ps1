@@ -2,8 +2,8 @@
 #																																			#
 #														FileName	Get-PackageFiles.ps1													#
 #														Author		John Hofmann															#
-#														Version		0.0.2																	#
-#														Date		10/09/2020																#
+#														Version		0.1.0																	#
+#														Date		10/12/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
 #											https://github.com/John-Hofmann/HofmanniaStudios												#
@@ -23,8 +23,9 @@
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #	Date			Version		Notes																										#
 #	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
-#	MM/DD/YYYY		0.0.1		Initial Build																								#
-#	MM/DD/YYYY		0.0.2		Updated downloading logic to account for packages that contain more than one distribution package			#
+#	10/08/2020		0.0.1		Initial Build																								#
+#	10/09/2020		0.0.2		Updated downloading logic to account for packages that contain more than one distribution package			#
+#	10/12/2020		0.1.0		Implemented Credential parameter for providing alternate credentials to access SCCMContentLibRootPath		#
 #																																			#
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #														  Known Issues																		#
@@ -102,32 +103,7 @@ Param (
 	# Parameter help description
 	[Parameter()]
 	[pscredential]
-	$Credential
-
-	
-	<#
-	[Parameter(Mandatory)]
-	[ArgumentCompleter( {
-			param ($commandName, $ParameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
-
-			$possibleValues = @{
-				Fruits     = @('Apple', 'Orange', 'Banana')
-				Vegetables = @('Tomato', 'Squash', 'Corn')
-			}
-
-			if ($fakeBoundParameters.ContainsKey('Type')) {
-				$possibleValues[$fakeBoundParameters.Type] | Where-Object {
-					$_ -like "$wordToComplete*"
-				}
-			} else {
-				$possibleValues.Values | ForEach-Object {
-					$_
-				}
-			}
-		})]
-	$Value
-	#>
-	
+	$Credential	
 )
 
 Begin {
@@ -141,6 +117,16 @@ Begin {
 	}
 
 	[System.IO.Directory]::SetCurrentDirectory($workingDirectory)
+
+	if ($Credential) {
+		New-PSDrive -Name SCCMContentLibRootPath -PSProvider FileSystem -Root $SCCMContentLibRootPath -Scope 0 -Credential $Credential
+	}
+
+	if (![System.IO.Directory]::Exists($SCCMContentLibRootPath)) {
+		[System.IO.IOException]$IOException = "The path '$SCCMContentLibRootPath' does not exist, or you do not have access to it."
+		[System.Management.Automation.ErrorRecord]$errorRecord = [System.Management.Automation.ErrorRecord]::new($IOException, 'SCCMContentLibRootPathNotFound,HofmanniaStudios.Commands.GetPackageFiles', 'ObjectNotFound', $SCCMContentLibRootPath)
+		$PSCmdlet.ThrowTerminatingError($errorRecord)
+	}
 
 	function Get-IniContent {
 		param (
