@@ -2,8 +2,8 @@
 #																																			#
 #														FileName	Get-PackageFiles.ps1													#
 #														Author		John Hofmann															#
-#														Version		0.1.0																	#
-#														Date		10/12/2020																#
+#														Version		0.2.0																	#
+#														Date		10/13/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
 #											https://github.com/John-Hofmann/HofmanniaStudios												#
@@ -26,6 +26,8 @@
 #	10/08/2020		0.0.1		Initial Build																								#
 #	10/09/2020		0.0.2		Updated downloading logic to account for packages that contain more than one distribution package			#
 #	10/12/2020		0.1.0		Implemented Credential parameter for providing alternate credentials to access SCCMContentLibRootPath		#
+#	10/13/2020		0.2.0		Added System.Management.Automation.Credential() transformation to Credential parameter						#
+#								Populated Comment-based Help blocks																			#
 #																																			#
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #														  Known Issues																		#
@@ -36,73 +38,104 @@
 
 <#
 .SYNOPSIS
-	A brief description of the function or script. This keyword can be used only once in each topic.
+	Downloads the contents of an SCCM package.
 
 .DESCRIPTION
-	A detailed description of the function or script. This keyword can be used only once in each topic.
+	The Get-PackageFiles cmdlet enumerates the files of each ContentID contained within the specified SCCM PackageID, and downloads the files.
 
-.PARAMETER ParameterName
-	The description of a parameter. Add a ".PARAMETER" keyword for each parameter in the function or script syntax.
+	First the PackageID.INI file for the specified package in the Package library is parsed, building a list of all ContentIDs in that package.
 
-	Type the parameter name on the same line as the ".PARAMETER" keyword. Type the parameter description on the lines following the ".PARAMETER" keyword. Windows PowerShell interprets all text between the ".PARAMETER" line and the next keyword or the end of the comment block as part of the parameter description. The description can include paragraph breaks.
+	Then the Data library folder for each ContentID is located, and the INI files contained within are used to build a list of source and destination files.
 
-.PARAMETER ParameterName
-	The Parameter keywords can appear in any order in the comment block, but the function or script syntax determines the order in which the parameters (and their descriptions) appear in help topic. To change the order, change the syntax.
-
-	You can also specify a parameter description by placing a comment in the function or script syntax immediately before the parameter variable name. If you use both a syntax comment and a Parameter keyword, the description associated with the Parameter keyword is used, and the syntax comment is ignored.
+	Finally, the source files are downloaded from the File library to the destination.
 
 .EXAMPLE
-	Example.ps1
+	.\Get-PackageFiles.ps1 -SCCMContentLibRootPath \\sccmdp.mydomain.com\e$\SCCMContentLib -PackageID C0000001
 
-	A sample command that uses the function or script, optionally followed by sample output and a description. Repeat this keyword for each example.
+	Downloading File1.exe...
+	Source: \\sccmdp.mydomain.com\e$\SCCMContentLib\FileLib\0123\0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF
+	Destination: .\C0000001\C0000001.1\File1.exe
+
+	Downloading File2.exe...
+	Source: \\sccmdp.mydomain.com\e$\SCCMContentLib\FileLib\1234\123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0
+	Destination: .\C0000001\C0000001.1\File2.exe
+
+	Downloading File1.exe...
+	Source: \\sccmdp.mydomain.com\e$\SCCMContentLib\FileLib\2345\23456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF01
+	Destination: .\C0000001\C0000001.2\File1.exe
+
+	Downloading File2.exe...
+	Source: \\sccmdp.mydomain.com\e$\SCCMContentLib\FileLib\3456\3456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF012
+	Destination: .\C0000001\C0000001.2\File2.exe
+
+
+	The above command downloads all files in each ContentID of C0000001 to subdirectories under .\C0000001\	
+
+.EXAMPLE
+	.\Get-PackageFiles.ps1 -SCCMContentLibRootPath \\sccmdp.mydomain.com\e$\SCCMContentLib -PackageID C0000001 -Destination C:\Windows\Temp -Credential mydomain\myusername
+
+	Downloading File1.exe...
+	Source: \\sccmdp.mydomain.com\e$\SCCMContentLib\FileLib\0123\0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF
+	Destination: C:\Windows\Temp\C0000001\C0000001.1\File1.exe
+
+	Downloading File2.exe...
+	Source: \\sccmdp.mydomain.com\e$\SCCMContentLib\FileLib\1234\123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0
+	Destination: C:\Windows\Temp\C0000001\C0000001.1\File2.exe
+
+	Downloading File1.exe...
+	Source: \\sccmdp.mydomain.com\e$\SCCMContentLib\FileLib\2345\23456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF01
+	Destination: C:\Windows\Temp\C0000001\C0000001.2\File1.exe
+
+	Downloading File2.exe...
+	Source: \\sccmdp.mydomain.com\e$\SCCMContentLib\FileLib\3456\3456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF012
+	Destination: C:\Windows\Temp\C0000001\C0000001.2\File2.exe
+
+
+	The above command is the same as example 1, but downloads the files to C:\Windows\Temp, and provides Credentials for accessing the SCCM Content library root
 
 .INPUTS
-	The Microsoft .NET Framework types of objects that can be piped to the function or script. You can also include a description of the input objects.
+	None
+		You cannot pipe input to this cmdlet.
 
 .OUTPUTS
-	The .NET Framework type of the objects that the cmdlet returns. You can also include a description of the returned objects.
+	None
+		This cmdlet does not return any objects.
 
 .NOTES
-	Additional information about the function or script.
+
 
 .LINK
-	https://google.com
-	
-.LINK
-	The name of a related topic. The value appears on the line below the ".LINK" keyword and must be preceded by a comment symbol # or included in the comment block.
-	Repeat the ".LINK" keyword for each related topic.
-	This content appears in the Related Links section of the help topic.
-	The "Link" keyword content can also include a Uniform Resource Identifier (URI) to an online version of the same help topic. The online version opens when you use the Online parameter of Get-Help. The URI must begin with "http" or "https".
-	The HelpURI parameter of CmdletBinding supersedes this.
+	https://github.com/John-Hofmann/HofmanniaStudios
 #>
 
 
-[CmdletBinding(ConfirmImpact = [System.Management.Automation.ConfirmImpact]::Medium, <#DefaultParameterSetName=[string], #>HelpUri = 'https://www.google.com', SupportsPaging = $false, SupportsShouldProcess = $true, PositionalBinding = $false)]
+[CmdletBinding(ConfirmImpact = [System.Management.Automation.ConfirmImpact]::Medium, <#DefaultParameterSetName=[string], #>HelpUri = 'https://github.com/John-Hofmann/HofmanniaStudios', SupportsPaging = $false, SupportsShouldProcess = $true, PositionalBinding = $false)]
 #[OutputType([type1], [type2], ParameterSetName=[string])] #Provides the value of the OutputType property of the System.Management.Automation.FunctionInfo object that the Get-Command cmdlet returns
 Param (
-	# Parameter help description
+	#The path to the SCCM Content library root directory where the Data library, File library, and Package library are located.
 	[Parameter(Mandatory, Position = 0, HelpMessage = 'The path to the SCCMContentLib root directory')]
 	[Alias('Root')]
 	[string]
 	[ValidateNotNullOrEmpty()]
 	$SCCMContentLibRootPath,
 	
-	# Parameter help description
+	#The PackageID of the package that you want to download.
 	[Parameter(Mandatory, Position = 1, HelpMessage = 'The PackageID of the Package to download')]
 	[Alias('ID')]
 	[string]
 	[ValidatePattern('^[0-9A-F]{8}$')]
 	$PackageID,
 
-	# Parameter help description
+	#The path to the destination folder that you want the files downloaded to. If this parameter is omitted, the files are downloaded to the current working directory.
 	[Parameter()]
 	[string]
 	[ValidateNotNullOrEmpty()]
 	$Destination = "$env:windir\ccmcache",
 
-	# Parameter help description
+	#Credentials with access to the SCCM Content library root.
 	[Parameter()]
 	[pscredential]
+	[System.Management.Automation.Credential()]
 	$Credential	
 )
 
@@ -156,6 +189,8 @@ Begin {
 		
 	}
 
+	[System.Console]::WriteLine('')
+
 }
 
 Process {
@@ -172,17 +207,17 @@ Process {
 
 	[hashtable]$packageINIContents = Get-IniContent -filePath $packageINI
 
-	foreach ($package in $packageINIContents.Packages.Keys) {
-		[string]$dataLibDirectory = "$SCCMContentLibRootPath\DataLib\$package"
-		[string[]]$packageFileINIs = [System.IO.Directory]::EnumerateFiles($dataLibDirectory, '*', 'AllDirectories')
+	foreach ($contentID in $packageINIContents.Packages.Keys) {
+		[string]$contentIDDirectory = "$SCCMContentLibRootPath\DataLib\$contentID"
+		[string[]]$contentINIs = [System.IO.Directory]::EnumerateFiles($contentIDDirectory, '*', 'AllDirectories')
 
-		foreach ($file in $packageFileINIs) {
-			[hashtable]$packageFileINIContents = Get-IniContent -filePath $file
-			[string]$hashedFileName = $packageFileINIContents.File.Hash
-			[string]$fileLibDirectory = "$SCCMContentLibRootPath\FileLib\" + $hashedFileName.Substring(0, 4)
-			[string]$sourcePath = "$fileLibDirectory\$hashedFileName"
-			[string]$destinationDirectory = [System.IO.Path]::GetDirectoryName($file)
-			[string]$destinationDirectory = $destinationDirectory.Replace($dataLibDirectory, "$Destination\$package")
+		foreach ($fileINI in $contentINIs) {
+			[hashtable]$fileINIContents = Get-IniContent -filePath $fileINI
+			[string]$hashedFileName = $fileINIContents.File.Hash
+			[string]$sourceDirectory = "$SCCMContentLibRootPath\FileLib\" + $hashedFileName.Substring(0, 4)
+			[string]$sourcePath = "$sourceDirectory\$hashedFileName"
+			[string]$destinationDirectory = [System.IO.Path]::GetDirectoryName($fileINI)
+			[string]$destinationDirectory = $destinationDirectory.Replace($contentIDDirectory, "$Destination\$contentID")
 
 			if ($PSCmdlet.ShouldProcess($destinationDirectory, 'Create Directory')) {
 				if (![System.IO.Directory]::Exists($destinationDirectory)) {
@@ -190,14 +225,14 @@ Process {
 				}
 			}
 
-			[string]$destianationFileName = $file -replace '^.*\\(.*).INI$', '$1'
+			[string]$destianationFileName = $fileINI -replace '^.*\\(.*).INI$', '$1'
 			[string]$destinationPath = "$destinationDirectory\$destianationFileName"
 
 			if ($PSCmdlet.ShouldProcess($destinationPath, 'Create File')) {
-				'Downloading ' + $destianationFileName + '...'
-				'Source: ' + $sourcePath
-				'Destination: ' + $destinationPath
-				''
+				[System.Console]::WriteLine('Downloading ' + $destianationFileName + '...')
+				[System.Console]::WriteLine('Source: ' + $sourcePath)
+				[System.Console]::WriteLine('Destination: ' + $destinationPath)
+				[System.Console]::WriteLine('')
 
 				[System.IO.File]::Copy($sourcePath, $destinationPath)
 			}
