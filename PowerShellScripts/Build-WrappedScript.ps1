@@ -2,8 +2,8 @@
 #																																			#
 #														FileName	Build-WrappedScript.ps1													#
 #														Author		John Hofmann															#
-#														Version		1.1.0																	#
-#														Date		09/21/2020																#
+#														Version		1.2.0																	#
+#														Date		10/14/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
 #											https://github.com/John-Hofmann/HofmanniaStudios												#
@@ -25,7 +25,9 @@
 #	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
 #	09/15/2020		0.0.1		Initial Build																								#
 #	09/18/2020		1.0.0		Initial Release Version																						#
-#	09/21/2020		1.1.0		Added -Encoded parameter to allow for Base64 encoded wrapping												#
+#	09/21/2020		1.1.0		Added Encoded parameter to allow for Base64 encoded wrapping												#
+#	10/14/2020		1.2.0		Added Cmdlet parameter to allow for advanced script wrapping												#
+#								Fixed bug with Encoded parameter that was causing cmd.exe to exit prematurely								#
 #																																			#
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #														  Known Issues																		#
@@ -53,6 +55,11 @@
 
 .PARAMETER Encoded
 	Uses Base64 encoding, rather than plain text for the script. This really only serves to obfuscate your code, as the standard wrapper doesn't have any size limit that I am aware of.
+
+.PARAMETER Cmdlet
+	Indicates that the source script uses advanced Cmdletbinding features, like $PSCmdlet and $MyInvocation, which will not work as expected in a ScriptBlock.
+
+	A script wrapped with this parameter will create a tempory copy of the original .ps1 file in the $Env:TEMP directory when executed.
 
 .EXAMPLE
 	.\Build-WrappedScript.ps1 -InputScript Foo.ps1
@@ -87,12 +94,22 @@
 
 	Will write an error and fail if Foo.cmd already exists.
 
+.EXAMPLE
+	.\Build-WrappedScript.ps1 -InputScript Foo.ps1 -Cmdlet
+
+	Creates Foo.cmd file containing the wrapped code from Foo.ps1 in the current directory.
+
+	Will write an error and fail if Foo.cmd already exists.
+
+	$Env:Temp\Foo.ps1 will be created at execution of Foo.cmd, and will be deleted when execution completes.
+
 .INPUTS
 	System.String
 		You can pipe a value for the InputScript to this cmdlet.
 
 .OUTPUTS
 	None
+		This cmdlet does not return any output.
 
 .NOTES
 	This cmdlet is only designed to work with scripts that do not require parameters, to allow ease of execution by double clicking. Scripts with parameters would require the user to enter a command line anyway, so wrapping them would not serve much purpose.
@@ -100,7 +117,7 @@
 	If you feel there is a meaningful use case for wrapping parameterized scripts, please contact me, and I will look into it.
 
 .LINK
-	https://github.com/John-Hofmann/HofmanniaStudios/blob/master/PowerShellScripts/Build-WrappedScript.ps1
+	https://github.com/John-Hofmann/HofmanniaStudios
 	
 #>
 
@@ -112,9 +129,13 @@ Param (
 	[string]
 	$InputScript,
 
-	[Parameter()]
+	[Parameter(ParameterSetName = 'Encoded')]
 	[switch]
 	$Encoded,
+
+	[Parameter(ParameterSetName = 'Cmdlet')]
+	[switch]
+	$Cmdlet,
 
 	[Parameter()]
 	[switch]
@@ -161,11 +182,16 @@ Process {
 			if ($Encoded) {
 				[byte[]]$sourceBytes = [System.Text.Encoding]::Unicode.GetBytes($sourceCode)
 				[string]$encodedCommand = [System.Convert]::ToBase64String($sourceBytes)
-				$wrappedCode += 'PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command $encodedCommand = Get-Content ''%~f0'' -Last 1; $encodedCommand ^| %% {Start-Process PowerShell.exe -NoNewWindow -ArgumentList """-NoLogo -NoProfile -ExecutionPolicy Bypass -EncodedCommand $_"""}'
+				$wrappedCode += 'PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command $encodedCommand = Get-Content ''%~f0'' -Last 1; $encodedCommand ^| %% {Start-Process -Wait PowerShell.exe -NoNewWindow -ArgumentList """-NoLogo -NoProfile -ExecutionPolicy Bypass -EncodedCommand $_"""}'
 				$lastLine = $encodedCommand
 			} else {
-				$wrappedCode += 'PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command $codeStart = (Select-String -Pattern ''^^:PowerShell Code Start'' -Path ''%~f0'').LineNumber; $lineCount = (Get-Content ''%~f0'').Length - $codeStart; Get-Content ''%~f0'' -Last $lineCount ^| ForEach-Object {$commands += \"$_`n\"}; $scriptBlock = [scriptblock]::Create($commands); Invoke-Command $scriptBlock'
-				$lastLine = $sourceCode
+				if ($Cmdlet) {
+					$wrappedCode += 'PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command $codeStart = (Select-String -Pattern ''^^:PowerShell Code Start'' -Path ''%~f0'').LineNumber; $lineCount = (Get-Content ''%~f0'').Length - $codeStart; Get-Content ''%~f0'' -Last $lineCount ^| ForEach-Object {$commands += \"$_`n\"}; $commands ^| Out-File "$env:TEMP\%~n0.ps1" -Force; Start-Process -Wait PowerShell.exe -NoNewWindow -ArgumentList """-NoLogo -NoProfile -ExecutionPolicy Bypass -File $env:TEMP\%~n0.ps1"""'
+					$wrappedCode += 'DEL "%TEMP%\%~n0.ps1"'
+				} else {
+					$wrappedCode += 'PowerShell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass -Command $codeStart = (Select-String -Pattern ''^^:PowerShell Code Start'' -Path ''%~f0'').LineNumber; $lineCount = (Get-Content ''%~f0'').Length - $codeStart; Get-Content ''%~f0'' -Last $lineCount ^| ForEach-Object {$commands += \"$_`n\"}; $scriptBlock = [scriptblock]::Create($commands); Invoke-Command $scriptBlock'
+				}
+					$lastLine = $sourceCode
 			}
 
 			$wrappedCode += 'EXIT /B %ERRORLEVEL%'
