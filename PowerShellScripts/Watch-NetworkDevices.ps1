@@ -1,9 +1,9 @@
 ﻿#############################################################################################################################################
 #																																			#
-#														FileName	FileName																#
+#														FileName	Watch-NetworkDevices.ps1												#
 #														Author		John Hofmann															#
 #														Version		0.0.1																	#
-#														Date		MM/DD/YYYY																#
+#														Date		10/26/2020																#
 #																																			#
 #											Copyright © 2020 John Hofmann All Rights Reserved												#
 #											https://github.com/John-Hofmann/HofmanniaStudios												#
@@ -23,7 +23,7 @@
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #	Date			Version		Notes																										#
 #	──────────		───────		─────────────────────────────────────────────────────────────────────────────────────────────────────────── #
-#	MM/DD/YYYY		0.0.1		Initial Build																								#
+#	10/26/2020		0.0.1		Initial Build																								#
 #																																			#
 #═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════#
 #														  Known Issues																		#
@@ -64,7 +64,7 @@
 	Additional information about the function or script.
 
 .LINK
-	https://google.com
+	https://github.com/John-Hofmann/HofmanniaStudios
 	
 .LINK
 	The name of a related topic. The value appears on the line below the ".LINK" keyword and must be preceded by a comment symbol # or included in the comment block.
@@ -75,89 +75,163 @@
 #>
 
 
-[CmdletBinding(ConfirmImpact = [System.Management.Automation.ConfirmImpact]::Medium, <#DefaultParameterSetName=[string], #>HelpUri = 'https://www.google.com', SupportsPaging = $false, SupportsShouldProcess = $true, PositionalBinding = $false)]
+[CmdletBinding(HelpUri = 'https://github.com/John-Hofmann/HofmanniaStudios', PositionalBinding = $false)]
 #[OutputType([type1], [type2], ParameterSetName=[string])] #Provides the value of the OutputType property of the System.Management.Automation.FunctionInfo object that the Get-Command cmdlet returns
 Param (
-	#	[Parameter(Mandatory=[bool], Position=[naturalnumber], ParameterSetName=[string], ValueFromPipeline=[bool], ValueFromPipelineByPropertyName=[bool], ValueFromRemainingArguments=[bool], HelpMessage='Displays when a mandatory parameter value is missing')]
-	#	[Alias([string[]])] #Establishes an alternate name for the parameter. There's no limit to the number of aliases that you can assign to a parameter
-	#	[type]
-	#	[AllowNull()] #Allows the value of a mandatory parameter to be $null
-	#	[AllowEmptyString()] #Allows the value of a mandatory parameter to be an empty string ("")
-	#	[AllowEmptyCollection()] #Allows the value of a mandatory parameter to be an empty collection @()
-	#	[ValidateCount([naturalnumber], [naturalnumber])] #Specifies the minimum and maximum number of parameter values that a parameter accepts
-	#	[ValidateLength([naturalnumber], [naturalnumber])] #Specifies the minimum and maximum number of characters in a parameter or variable value
-	#	[ValidatePattern([regex])] #Specifies a regular expression that's compared to the parameter or variable value
-	#	[ValidateRange([naturalnumber], [naturalnumber])] #Specifies a numeric range for the parameter or variable value
-	#	[ValidateScript([scriptblock])] #Specifies a script that is used to validate a parameter or variable value. PowerShell pipes the value to the script, and generates an error if the script returns $false or if the script throws an exception
-	#	[ValidateSet([array])] #Specifies a set of valid values for a parameter or variable and enables tab completion
-	#	[ValidateNotNull()] #Specifies that the parameter value can't be $null
-	#	[ValidateNotNullOrEmpty()] #Specifies that the parameter value can't be $null and can't be an empty string ("")
-	#	[ValidateDrive('C', 'D', 'Variable', 'Function', etc...)] #Specifies that the parameter value must represent the path, that's referring to allowed drives only
-	#Text displayed by Get-Help for this Parameter
-	$ParameterName = 'defaultvalue',
+	[Parameter(Mandatory, Position = 0, HelpMessage = 'Path to a CSV file containing the HostName, IPAddress, SerialNumber, Model, and Location of each device to be watched.')]
+	[string]
+	$File,
 
-	# Parameter help description
-	[Parameter(Mandatory)]
-	[ValidateSet('Fruits', 'Vegetables')]
-	$Type,
+	[Parameter(Mandatory, HelpMessage = 'The mailrelay to use for sending alerts.')]
+	[string]
+	$MailRelay,
 
-	# Parameter help description
-	[Parameter(Mandatory)]
-	[ArgumentCompleter( {
-			param ($commandName, $ParameterName, $wordToComplete, $commandAst, $fakeBoundParameters)
+	[Parameter(Mandatory, HelpMessage = 'The email address(es) to receive alerts.')]
+	[string[]]
+	$To,
 
-			$possibleValues = @{
-				Fruits     = @('Apple', 'Orange', 'Banana')
-				Vegetables = @('Tomato', 'Squash', 'Corn')
-			}
-
-			if ($fakeBoundParameters.ContainsKey('Type')) {
-				$possibleValues[$fakeBoundParameters.Type] | Where-Object {
-					$_ -like "$wordToComplete*"
-				}
-			} else {
-				$possibleValues.Values | ForEach-Object {
-					$_
-				}
-			}
-		})]
-	$Value
-	
+	[Parameter(Mandatory, HelpMessage = 'The email address to use for sending alerts.')]
+	[string]
+	$From
 )
-
-DynamicParam {
-
-	[System.Management.Automation.RuntimeDefinedParameterDictionary]$paramDictionary = [System.Management.Automation.RuntimeDefinedParameterDictionary]::new()
-
-	if ((Get-Location).Path -eq 'C:\') {
-		[Parameter]$parameterAttributes = [Parameter]::new()
-		$parameterAttributes.HelpMessage = 'Displays when a mandatory parameter value is missing'
-		$parameterAttributes.Mandatory = $false
-		$parameterAttributes.ParameterSetName = 'SetName'
-		$parameterAttributes.Position = 1
-		$parameterAttributes.ValueFromPipeline = $false
-		$parameterAttributes.ValueFromPipelineByPropertyName = $false
-		$parameterAttributes.ValueFromRemainingArguments = $false
-		[System.Management.Automation.RuntimeDefinedParameter]$DynamicParameter = [System.Management.Automation.RuntimeDefinedParameter]::new('DynamicParameter', [string], $parameterAttributes)
-		$paramDictionary.Add('DynamicParameter', $DynamicParameter)
-		Register-ArgumentCompleter -CommandName PowerShellNewFileTemplate.ps1 -ParameterName DynamicParameter -ScriptBlock { (Get-ChildItem -File).FullName }
+	
+class Cursor {
+	[void]savePosition() {
+		[System.Console]::Write("$([char]27)7")
 	}
 
-	return $paramDictionary
+	[void]restorePosition() {
+		[System.Console]::Write("$([char]27)8")
+	}
+
+	[void]hide() {
+		[System.Console]::Write("$([char]27)[?25l")
+	}
+
+	[void]show() {
+		[System.Console]::Write("$([char]27)[?25h")
+	}
+}
+	
+class Text {
+	[string]green([string]$s) {
+		return "$([char]27)[92m" + $s + $this.default()
+	}
+
+	[string]yellow($s) {
+		return "$([char]27)[93m" + $s + $this.default()
+	}
+
+	[string]red($s) {
+		return "$([char]27)[91m" + $s + $this.default()
+	}
+
+	[string]default() {
+		return "$([char]27)[0m"
+	}
 }
 
-Begin {}
+class Device {
+	[string]$hostName
+	[string]$ipAddress
+	[string]$model
+	[string]$serialNumber
+	[string]$location
+	[string]$status
+	[System.Threading.Tasks.Task]$pingReply
+	[int]$count = 0
+	[bool]$mailSent = $false
+	[System.Net.NetworkInformation.Ping]$pinger = [System.Net.NetworkInformation.Ping]::new()
 
-Process {
-	
-	if ($PSCmdlet.ShouldProcess("Target", "Operation")) {
-		$DynamicParameter #Commands that require confirmation if ComfirmPreference is equal to or below ConfirmImpact level
+	[void]ping() {
+		$this.pingReply = $this.pinger.SendPingAsync($this.ipAddress)
 	}
 
-	if ($PSCmdlet.ShouldContinue("Target", "Operation")) {
-		$DynamicParameter.Value#Commands that always require confirmation
+	[void]update() {
+		$this.status = $this.pingReply.Result.Status
+		if ($this.status -eq 'Success') {
+			$this.count = 0
+		} else {
+			$this.count++
+		}
 	}
-	
 }
 
-End {}
+[System.Net.Mail.MailMessage]$mailMessage = [System.Net.Mail.MailMessage]::new()
+[System.Net.Mail.SmtpClient]$smtpClient = [System.Net.Mail.SmtpClient]::new($MailRelay)
+$mailMessage.From = $From
+
+foreach ($address in $To) {
+	$mailMessage.To.Add($address)
+}
+
+[int]$hostNamePadding = 8
+[int]$ipAddressPadding = 12
+[int]$serialNumberPadding = 12
+[int]$modelPadding = 5
+[int]$locationPadding = 8
+[int]$statusPadding = 26
+
+[Cursor]$cursor = [Cursor]::new()
+[Text]$text = [Text]::new()
+
+[System.Collections.Generic.List[Device]]$deviceList = [System.Collections.Generic.List[Device]]::new()
+$PSCmdlet.WriteDebug("Importing " + $File + "...")
+Import-Csv -Path $File | ForEach-Object {
+	$PSCmdlet.WriteDebug('[Device]$d = ' + "$_")
+	[Device]$d = $_
+	$PSCmdlet.WriteDebug('$deviceList.Add(' + "$d" + ')')
+	$deviceList.Add($d)
+}
+
+foreach ($device in $deviceList) {
+	if ($device.hostName.Length -gt $hostNamePadding) {
+		$hostNamePadding = $device.hostName.Length
+	}
+	
+	if ($device.serialNumber.Length -gt $serialNumberPadding) {
+		$serialNumberPadding = $device.serialNumber.Length
+	}
+		
+	if ($device.model.Length -gt $modelPadding) {
+		$modelPadding = $device.model.Length
+	}
+		
+	if ($device.location.Length -gt $locationPadding) {
+		$locationPadding = $device.location.Length
+	}		
+}
+
+[System.Console]::WriteLine(("{0,-$hostNamePadding}" -f 'Hostname') + "`t" + ("{0,-$ipAddressPadding}" -f 'IPAddress') + "`t" + ("{0,-$serialNumberPadding}" -f 'SerialNumber') + "`t" + ("{0,-$modelPadding}" -f 'Model') + "`t" + ("{0,-$locationPadding}" -f 'Location') + "`tStatus")
+
+$cursor.savePosition()
+$cursor.hide()
+
+while ($true) {
+	foreach ($device in $deviceList) {
+		$device.ping()
+		$device.update()
+
+		if ($device.status -eq 'Success') {
+			#[System.Console]::WriteLine($device.location + ' ' + $device.model + ' ' + $device.serialNumber + ' ' + $device.hostName + ' ' + $device.ipAddress + ' ' + $text.green("{0,-26}" -f $device.status))
+			[System.Console]::WriteLine(("{0,-$hostNamePadding}" -f $device.hostName) + "`t" + ("{0,-$ipAddressPadding}" -f $device.ipAddress) + "`t" + ("{0,-$serialNumberPadding}" -f $device.serialNumber) + "`t" + ("{0,-$modelPadding}" -f $device.model) + "`t" + ("{0,-$locationPadding}" -f $device.location) + "`t" + $text.green("{0,-$statusPadding}" -f $device.status))
+			$device.mailSent = $false
+		} elseif ($device.count -ge 4) {
+			#[System.Console]::WriteLine($device.location + ' ' + $device.model + ' ' + $device.serialNumber + ' ' + $device.hostName + ' ' + $device.ipAddress + ' ' + $text.red("{0,-26}" -f $device.status))
+			[System.Console]::WriteLine(("{0,-$hostNamePadding}" -f $device.hostName) + "`t" + ("{0,-$ipAddressPadding}" -f $device.ipAddress) + "`t" + ("{0,-$serialNumberPadding}" -f $device.serialNumber) + "`t" + ("{0,-$modelPadding}" -f $device.model) + "`t" + ("{0,-$locationPadding}" -f $device.location) + "`t" + $text.red("{0,-$statusPadding}" -f $device.status))
+			if (!$device.mailSent) {
+				$mailMessage.Subject = $device.hostName + ' is down!'
+				$mailMessage.Body = $device.hostName + ' went down at ' + [datetime]::Now
+				$smtpClient.Send($mailMessage)
+				$PSCmdlet.WriteVerbose("Sending Mail at " + [datetime]::Now)
+				$device.mailSent = $true
+			}
+		} else {
+			#[System.Console]::WriteLine($device.location + ' ' + $device.model + ' ' + $device.serialNumber + ' ' + $device.hostName + ' ' + $device.ipAddress + ' ' + $text.yellow("{0,-26}" -f $device.status))
+			[System.Console]::WriteLine(("{0,-$hostNamePadding}" -f $device.hostName) + "`t" + ("{0,-$ipAddressPadding}" -f $device.ipAddress) + "`t" + ("{0,-$serialNumberPadding}" -f $device.serialNumber) + "`t" + ("{0,-$modelPadding}" -f $device.model) + "`t" + ("{0,-$locationPadding}" -f $device.location) + "`t" + $text.yellow("{0,-$statusPadding}" -f $device.status))
+		}
+	}
+
+	$cursor.restorePosition()
+}
+	
