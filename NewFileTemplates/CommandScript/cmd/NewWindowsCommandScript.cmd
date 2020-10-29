@@ -32,185 +32,58 @@
 ::																																			::
 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::
 
-::NAME
-::    SCRIPTNAME
-::    <-4 SPACES    Do not exceed 73 columns to prevent text wrapping.->|
+::Desciption
+::	Description of script.
 ::
+::Parameters
+::	Script parameters.
+::	-h, -?, --help
+::		Displays help for the script.
 ::
-::SYNOPSIS
-::    Synopsis                                                          |
-::
-::
-::SYNTAX
-::    Syntax                                                            |
-::
-::
-::DESCRIPTION
-::    Description                                                       |
-::
-::
-::PARAMETERS
-::    -PARAMETER1
-::        Description.
-::        <-8 SPACES Don't exceed 73 columns to prevent text wrapping.->|
-::
-::    -PARAMETER2
-::        Description.                                                  |
-::
-::    -h
-::        Displays this help text.                                      |
-::
-::    -help
-::        Displays this help text.                                      |
-::
-::
-:ENDOFPARAMETERS
-::INPUTS
-::    Type of input                                                     |
-::        Description of input.                                         |
-::
-::
-::OUTPUTS
-::    Type of output                                                    |
-::        Description of output.                                        |
-::
-::
-::EXIT CODES
-::    0  --  'Success'                							        |
-::    1234 - 'Description of exit code'  		                        |
-::
-::
-::NOTES
-::
-::    NOTES                                                             |
-::
-::
-::    -------------------------- EXAMPLE 1 --------------------------
-::    <-4 SPACES       Do not exceed 69 columns to keep alignment.->|
-::    EXAMPLE
-::
-::
-:ENDOFHELP
+::Exit Codes
+::	0  --  'SUCCESS'
+::	968 -- 'HELPDISPLAYED'
+::	1582 - 'UNRECOGNIZEDPARAMETER'
 
-@ECHO OFF
-SETLOCAL ENABLEDELAYEDEXPANSION
+@echo off
+:parameters
+	set "param=%1"
+	set "shift=0"
+	set "helpResult="
+	call :help -h -? --help
+	%helpResult%
 
-CALL :SWITCHPARSER %*
-
-IF "%H%" EQU "TRUE" (
-	CALL :HELP
-	EXIT /B %ERRORLEVEL%
-)
-
-IF "%HELP%" EQU "TRUE" (
-	CALL :HELP
-	EXIT /B %ERRORLEVEL%
-)
-
-::REPLACE THIS LINE WITH YOUR SCRIPT NewWindowsCommandScript.cmd Version 0.3.0
-EXIT /B 0
-
-:**FUNCTIONS**
-::<PLACE FUNCTIONS HERE>
-
-:HELP
-	SETLOCAL ENABLEDELAYEDEXPANSION
-	SET "FILE="%~f0""
-	SET /A SKIP = 0
-
-	::Parses each line of the file until getting to the ::NAME line, incrementing SKIP by 1 each time
-	::The usebackq option is used to prevent errors, in the case that %FILE% contains quotes due to spaces in the filename
-	FOR /F "usebackq" %%A IN (%FILE%) DO (
-		SET /A SKIP += 1
-		IF "%%A" EQU "::NAME" (
-			GOTO :HELPBREAK1
+	if %shift% neq 0 (
+		shift /%shift%
+	) else (
+		if "%1" neq "" (
+			echo:Unrecognized parameter "%1" >&2
+			echo:-h, --help, or -? can be used to display help. >&2
+			exit /b 1582
 		)
 	)
 
-	::Exits with exit code 1090 '::NAME NOT FOUND' if no ::NAME line is found
-	EXIT /B 1090
-	:HELPBREAK1
-
-	::Displays the contents of all lines between the lines ::NAME and :ENDOFHELP.
-	::The usebackq option is used to prevent errors, in the case that %FILE% contains quotes due to spaces in the filename
-	FOR /F "usebackq skip=%SKIP% delims=" %%A IN (%FILE%) DO (
-		IF "%%A" EQU ":ENDOFHELP" (
-			GOTO :HELPBREAK2
-		)
-		
-		SET "LINE=%%A"
-		IF "!LINE:~0,2!" EQU "::" (
-			ECHO:!LINE:~2!
-		)
+	if "%1" neq "" (
+		goto :parameters
 	)
 
-	::Exits with exit code 1404 ':ENDOFHELP NOT FOUND' if no ::NAME line is found
-	EXIT /B 1404
+:script
+	::<script goes here>:: 														NewWindowsCommandScript.cmd Version 1.0.0
+exit /b 0
 
-	:HELPBREAK2
-
-EXIT /B 0
-
-:SWITCHPARSER *%
-	::Checking that delayed expansion is enabled
-	SET "EXPANSIONTEST=TRUE"
-	IF "!EXPANSIONTEST!" NEQ "TRUE" (
-		ECHO:This function requires delayed expansion. Please add SETLOCAL ENABLEDELAYEDEXPANSION to your script before calling this function.
-		::Exits with exit code 2821 'MISSING SETLOCAL ENABLEDELAYEDEXPANSION' if delayed expansion is not enabled
-		EXIT /B 2821
-	)
-
-	SET "FILE="%~f0""
-	SET /A SKIP = 0
-
-	::Parses each line of the file until getting to the ::PARAMETERS line, incrementing SKIP by 1 each time
-	::The usebackq option is used to prevent errors, in the case that %FILE% contains quotes due to spaces in the filename
-	FOR /F "usebackq" %%A IN (%FILE%) DO (
-		SET /A SKIP += 1
-		IF "%%A" EQU "::PARAMETERS" (
-			GOTO :SWITCHPARSERBREAK1
+:functions
+	:help
+		if /i "%param%" equ "%1" (
+			goto:helptext
+		) else (
+			if /i "%param%" equ "/?" (
+				goto:helptext
+			)
 		)
-	)
-
-	::Exits with exit code 1557 '::PARAMETERS NOT FOUND' if no line beginning with ::PARAMETERS is found
-	EXIT /B 1557
-	:SWITCHPARSERBREAK1
-	SET /A N = 0
-	SET "PARAMETERS="
-
-	::Searches for all lines between ::PARAMETERS and :ENDOFPARAMETERS that begin with "::    -" and stores them 
-	::in %PARAM% variables in the form %PARAM1%, %PARAM2%, etc..., keeping track of the total number found
-	FOR /F "usebackq skip=%SKIP% delims=" %%A IN (%FILE%) DO (
-		IF "%%A" EQU ":ENDOFPARAMETERS" (
-			GOTO :SWITCHPARSERBREAK2
-		)
-		
-		SET "LINE=%%A"
-		SET "LINE=!LINE:|=!"
-		SET "LINE=!LINE:<=!"
-		SET "LINE=!LINE:>=!"
-		
-		IF "!LINE:~0,7!" EQU "::    -" (
-			SET /A "N += 1"
-			SET "PARAM!N!=!LINE:~6!"
-			CALL SET "PARAM!N!=%%PARAM!N!: =%%"
-		)
-	)
-
-	::Exits with exit code 1863 ':ENDOFPARAMETERS NOT FOUND' if no ":ENDOFPARAMETERS" line is found
-	EXIT /B 1863
-	:SWITCHPARSERBREAK2
-
-	::Compares each command line argument with each PARAMETER, and for any matching values, creates a variable 
-	::names the same as the matching PARAMETER, and sets it to TRUE. You can then use
-	::                    IF "PARAMETERNAME" EQU "TRUE" (STUFF TO DO HERE)
-	::to build logic based on the parameters
-	FOR /L %%A IN (1,1,!N!) DO (
-		FOR %%B IN (%*) DO (
-			IF /I "%%B" EQU "!PARAM%%A!" (
-				SET "!PARAM%%A:~1!=TRUE"
-			) 
-		)
-	)
-
-EXIT /B 0
+		shift
+		if "%1" neq "" goto :help
+		exit /b 0
+		:helptext
+		echo:This is some help text.
+		set "helpResult=exit /b 968"
+	exit /b 968
